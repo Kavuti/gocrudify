@@ -3,6 +3,7 @@ package gocrudify
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	utils "github.com/Kavuti/go-service-utils"
@@ -17,8 +18,25 @@ type Handler[T Entity] struct {
 	nonIdFields []CrudFieldValue
 }
 
-func (h *Handler[T]) Search(w http.ResponseWriter, r *http.Request) ([]T, error) {
-	return []T{}, nil
+func (h *Handler[T]) Search(w http.ResponseWriter, r *http.Request) {
+	defer utils.RecoverIfError(w, r)
+	var request map[string]interface{}
+
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil && err != io.EOF {
+		utils.CheckError(err)
+	}
+
+	ctx := r.Context()
+	render.RenderList(w, r, h.convertToRenderer(h.service.Search(&ctx, request)))
+}
+
+func (h *Handler[T]) convertToRenderer(entities []T) []render.Renderer {
+	list := []render.Renderer{}
+	for _, entity := range entities {
+		list = append(list, entity)
+	}
+	return list
 }
 
 func (h *Handler[T]) Get(w http.ResponseWriter, r *http.Request) {
@@ -32,8 +50,7 @@ func (h *Handler[T]) Get(w http.ResponseWriter, r *http.Request) {
 func (h *Handler[T]) Create(w http.ResponseWriter, r *http.Request) {
 	defer utils.RecoverIfError(w, r)
 	var request T
-	err := json.NewDecoder(r.Body).Decode(&request)
-	utils.CheckError(err)
+	utils.CheckError(json.NewDecoder(r.Body).Decode(&request))
 	ctx := r.Context()
 	render.Render(w, r, *h.service.Create(&ctx, &request))
 	w.WriteHeader(http.StatusCreated)
@@ -43,8 +60,7 @@ func (h *Handler[T]) Update(w http.ResponseWriter, r *http.Request) {
 	defer utils.RecoverIfError(w, r)
 	id := chi.URLParam(r, h.idFieldInfo.JsonName)
 	var request T
-	err := json.NewDecoder(r.Body).Decode(&request)
-	utils.CheckError(err)
+	utils.CheckError(json.NewDecoder(r.Body).Decode(&request))
 	ctx := r.Context()
 	render.Render(w, r, *h.service.Update(&ctx, id, &request))
 	w.WriteHeader(http.StatusOK)
@@ -61,6 +77,7 @@ func (h *Handler[T]) Delete(w http.ResponseWriter, r *http.Request) {
 func (h *Handler[T]) Routes() chi.Router {
 	r := chi.NewRouter()
 
+	r.Post("/search", h.Search)
 	r.Post("/", h.Create)
 
 	r.Route(fmt.Sprintf("/{%s}", h.idFieldInfo.JsonName), func(r chi.Router) {
@@ -83,7 +100,7 @@ func Expose[T Entity](tableName string, db *sqlx.DB) *Handler[T] {
 
 	handler.nonIdFields = GetNonIdFields[T]()
 	if handler.idFieldInfo.Type.String() != "int64" && handler.idFieldInfo.Type.String() != "string" {
-		panic(fmt.Sprintf("Some entity has the wrong id type: %s instead of int/string", handler.idFieldInfo.Type.String()))
+		panic(fmt.Sprintf("Some entity has the wrong id type: %s instead of int64/string", handler.idFieldInfo.Type.String()))
 	}
 
 	handler.service = *NewService[T](tableName, handler.idFieldInfo, handler.nonIdFields)

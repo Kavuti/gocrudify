@@ -2,14 +2,16 @@ module github.com/Kavuti/gocrudify
 
 go 1.19
 
-require github.com/jmoiron/sqlx v1.3.5
+require (
+	github.com/Kavuti/go-service-utils v0.0.0-20230210232738-e84e26d21837
+	github.com/Masterminds/squirrel v1.5.3
+	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-chi/render v1.0.2
+	github.com/jmoiron/sqlx v1.3.5
+)
 
 require (
-	github.com/Kavuti/go-service-utils v0.0.0-20230210232738-e84e26d21837 // indirect
-	github.com/Masterminds/squirrel v1.5.3 // indirect
 	github.com/ajg/form v1.5.1 // indirect
-	github.com/go-chi/chi/v5 v5.0.8 // indirect
-	github.com/go-chi/render v1.0.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.2 // indirect

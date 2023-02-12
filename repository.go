@@ -21,6 +21,16 @@ type repository[T Entity] struct {
 	nonIdFields []CrudFieldValue
 }
 
+func (r *repository[T]) Search(ctx *context.Context, tx *sqlx.Tx, filter map[string]interface{}) []T {
+	var result []T
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
+	sql, args, err := psql.Select("*").From(r.tableName).Where(ParseFilter(filter, r.nonIdFields)).ToSql()
+	utils.CheckError(err)
+	utils.CheckError(tx.Select(&result, sql, args...))
+
+	return result
+}
+
 func (r *repository[T]) Get(ctx *context.Context, tx *sqlx.Tx, id string) *T {
 	var entity []T
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
@@ -30,8 +40,7 @@ func (r *repository[T]) Get(ctx *context.Context, tx *sqlx.Tx, id string) *T {
 	sql, args, err := psql.Select("*").From(r.tableName).Where(sq.Eq{r.idFieldInfo.Name: idValue}).ToSql()
 	utils.CheckError(err)
 
-	err = tx.Select(&entity, sql, args...)
-	utils.CheckError(err)
+	utils.CheckError(tx.Select(&entity, sql, args...))
 
 	if len(entity) == 0 {
 		utils.RaiseError(errors.New("not found"), http.StatusNotFound)

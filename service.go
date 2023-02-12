@@ -16,6 +16,14 @@ type service[T Entity] struct {
 	nonIdFields []CrudFieldValue
 }
 
+func (s *service[T]) Search(ctx *context.Context, filter map[string]interface{}) []T {
+	tx := db.MustBegin()
+	defer tx.Rollback()
+
+	result := s.repository.Search(ctx, tx, filter)
+	return result
+}
+
 func (s *service[T]) Get(ctx *context.Context, id string) *T {
 	tx := db.MustBegin()
 	defer tx.Rollback()
